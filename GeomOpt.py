@@ -13,12 +13,12 @@ class GeomOpt(object):
     #
     # Variables:
     #   xyz:        2d np.array with shape (numAtom, 4);
-    #               1st column has atomic numbers other 3 are xyz coordinates
+    #               1st column has atomic numbers, other 3 are xyz coordinates
     #   occOrbList: list of 1 or 2 occupied orbital matrices
     #               [occOrb] for RHF/RKS, [occOrbA, occOrbB] for UHF/UKS
     #   grad:       2d np.array with shape (numAtom, 3)
     #   guess:      'core', 'sad', or occOrbList
-    #   info:       dictionary with at least {'energy': Energy}
+    #   info:       dictionary with at least 'GradFunc' or 'EnergyFunc'
     #               can be used to pass other arguments to GradFunc/EnergyFunc
     #--------------------------------------------------------------------------
     def __init__(self, info):
