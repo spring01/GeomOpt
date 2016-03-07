@@ -12,14 +12,18 @@ class GeomOpt(object):
     #   'GradFunc'  :   (energy, occOrbList, grad) = GradFunc(xyz, guess, info)
     #
     # Variables:
+    # Input:
     #   xyz:        2d np.array with shape (numAtom, 4);
-    #               1st column has atomic numbers, other 3 are xyz coordinates
-    #   occOrbList: list of 1 or 2 occupied orbital matrices
+    #               1st column is atomic number, other 3's are xyz coordinates
+    #   guess:      String 'core', 'sad', or list of occupied orbitals;
+    #               see occOrbList for details
+    #   info:       Dictionary with at least 'GradFunc' or 'EnergyFunc';
+    #               can be used to pass other arguments to GradFunc/EnergyFunc
+    # Output:
+    #   energy:     Double precision scalar; total scf energy
+    #   occOrbList: List of 1 or 2 occupied orbital matrices (wavefunction);
     #               [occOrb] for RHF/RKS, [occOrbA, occOrbB] for UHF/UKS
     #   grad:       2d np.array with shape (numAtom, 3)
-    #   guess:      'core', 'sad', or occOrbList
-    #   info:       dictionary with at least 'GradFunc' or 'EnergyFunc'
-    #               can be used to pass other arguments to GradFunc/EnergyFunc
     #--------------------------------------------------------------------------
     def __init__(self, info):
         if 'GradFunc' in info:
@@ -34,26 +38,41 @@ class GeomOpt(object):
         self.__thresMaxDisp = 0.001800
         self.__thresRmsDisp = 0.001200
     
-    # BFGS optimizer
-    def RunGeomOpt(self, info):
-        xyz = info['xyz'].copy()
+    # Homemade BFGS optimizer
+    def RunGeomOpt(self, xyz, info):
+        xyz = xyz.copy()
         (energy, occOrbList, grad) = self.__gradFunc(xyz, 'sad', info)
         hess = np.eye(grad.size)
         for numIter in xrange(self.__maxNumIter):
-            print 'geometry optimization:', numIter
+            print 'GeomOpt current energy:', energy
             step = -self.__stepSize * np.linalg.solve(hess, grad.ravel())
             xyz[:, 1:] += step.reshape(xyz[:, 1:].shape)
-            (energy, occOrbList, gradNew) =\
-                self.__gradFunc(xyz, occOrbList, info)
-            diffGrad = (gradNew - grad).ravel()
+            if self.__HasConverged(grad, step):
+                break
+            gradOld = grad
+            (energy, occOrbList, grad) = self.__gradFunc(xyz, occOrbList, info)
+            diffGrad = (grad - gradOld).ravel()
             hessDotStep = hess.dot(step)
             hess += np.outer(diffGrad, diffGrad) / diffGrad.dot(step)
             hess -= np.outer(hessDotStep, hessDotStep) / step.dot(hessDotStep)
-            if self.__HasConverged(gradNew, step):
-                break
-            grad = gradNew
         # end for
-        print 'geometry optimization done in', numIter + 1, 'iterations'
+        print 'GeomOpt done in', numIter + 1, 'iterations'
+        return (xyz, energy, occOrbList)
+    
+    # SciPy's BFGS optimizer wrapper
+    def RunGeomOptScipy(self, xyz, info):
+        import scipy.optimize as opt
+        def Func(coords, *args):
+            xyz = args[0].copy()
+            guess = args[1]
+            xyz[:, 1:] = coords.reshape(xyz[:, 1:].shape)
+            return self.__energyFunc(xyz, guess, info)[0]
+        def Print(xk):
+            print xk
+        xyz = xyz.copy()
+        coords0 = xyz[:, 1:].ravel().copy()
+        coords = opt.fmin_bfgs(Func, coords0, args=(xyz, 'sad'), callback=Print)
+        xyz[:, 1:] = coords.reshape(xyz[:, 1:].shape)
         return xyz
     
     # Finite difference approximation of gradient

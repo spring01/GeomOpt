@@ -3,8 +3,8 @@ from HF import HF
 
 class KS(HF):
     
-    def __init__(self, info):
-        HF.__init__(self, info)
+    def __init__(self, xyz, info):
+        HF.__init__(self, xyz, info)
         self.pypsi.DFT_Initialize(info['dft'])
         self.__hfExcMix = info['hfExcMix']
     

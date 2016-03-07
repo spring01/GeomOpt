@@ -18,24 +18,27 @@ xyz = np.array([[8, 0.0,  0.000000,  0.110200],
                 [1, 0.0,  0.711600, -0.440800],
                 [1, 0.0, -0.711600, -0.440800]])
 
+#~ xyz = np.array([[7, -0.10339734, -0.22895125,  0.00000000],
+                #~ [1,  0.22992455, -1.17176434,  0.00000000],
+                #~ [1,  0.22994176,  0.24244893,  0.81649673],
+                #~ [1,  0.22994176,  0.24244893, -0.81649673]])
 
-info = {'xyz': xyz,
-        'basis': 'cc-pvdz',
+info = {'basis': '6-31g',
         'charge': 0,
         '2s+1': 1}
 
 np.set_printoptions(precision=3)
 
-#~ hf = SCF.HF(info)
-#~ (energy, fockList) = hf.RunSCF()
-#~ hf.pypsi.JK_Initialize('directjk', 'cc-pvdz-jkfit')
-#~ print 'energy:', energy
-#~ print hf.SolveFock(fockList[0])[0]
+hf = SCF.HF(xyz, info)
+(energy, occOrbList, fockList) = hf.RunSCF()
+hf.pypsi.JK_Initialize('directjk', 'cc-pvdz-jkfit')
+print 'energy:', energy
+print hf.SolveFock(fockList[0])[0]
 
 
 info['dft'] = 'b3lyp'
 info['hfExcMix'] = 0.2
-ks = SCF.KS(info)
+ks = SCF.KS(xyz, info)
 ks.pypsi.Settings_SetMaxNumCPUCores(4)
 ks.pypsi.JK_Initialize('dfjk', 'cc-pvdz-jkfit')
 (energy, occOrbList, fockList) = ks.RunSCF()

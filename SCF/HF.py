@@ -4,13 +4,12 @@ from LCIIS import LCIIS
 
 class HF(object):
     
-    def __init__(self, info):
-        pypsi = PyPsi(info['xyz'], info['basis'], info['charge'], info['2s+1'])
+    def __init__(self, xyz, info):
+        pypsi = PyPsi(xyz, info['basis'], info['charge'], info['2s+1'])
         self.pypsi = pypsi
-        self.__numElecAB = self.__NumElecAB(pypsi.Molecule_NumElectrons(),
-                                            info['2s+1'])
-        scfTypeDict = {1: 'rhf', 2: 'uhf'}
-        pypsi.SCF_SetSCFType(scfTypeDict[len(set(self.__numElecAB))])
+        numElecTotal = pypsi.Molecule_NumElectrons()
+        self.__numElecAB = self.__NumElecAB(numElecTotal, info['2s+1'])
+        pypsi.SCF_SetSCFType({1: 'rhf', 2: 'uhf'}[len(set(self.__numElecAB))])
         
         self.__overlap = pypsi.Integrals_Overlap()
         self.__toOr = self.__ToOrtho(self.__overlap)
