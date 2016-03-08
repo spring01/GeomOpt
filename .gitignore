@@ -1,6 +1,7 @@
 *.pyc
-PyPsi
+PyPsi*
 fort.7
 *.log
 *.xyz
+__pycache__
 

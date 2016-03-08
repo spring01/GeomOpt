@@ -1,10 +1,10 @@
 import numpy as np
-from HF import HF
+from .HF import HF
 
 class KS(HF):
     
-    def __init__(self, xyz, info):
-        HF.__init__(self, xyz, info)
+    def __init__(self, xyz, info, verbose):
+        HF.__init__(self, xyz, info, verbose)
         self.pypsi.DFT_Initialize(info['dft'])
         self.__hfExcMix = info['hfExcMix']
     
@@ -25,3 +25,4 @@ class KS(HF):
         ksEDiff = self.pypsi.DFT_EnergyXC() - np.mean(
             [dftV.ravel().dot(dens.ravel()) for (dftV, dens) in zipList])
         return HF._SCFEnergy(self, fockList, densList) + ksEDiff
+

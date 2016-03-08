@@ -1,10 +1,11 @@
 import numpy as np
 from PyPsi import PyPsi
-from LCIIS import LCIIS
+from .LCIIS import LCIIS
 
 class HF(object):
     
-    def __init__(self, xyz, info):
+    def __init__(self, xyz, info, verbose=False):
+        self.__verbose = verbose
         pypsi = PyPsi(xyz, info['basis'], info['charge'], info['2s+1'])
         self.pypsi = pypsi
         numElecTotal = pypsi.Molecule_NumElectrons()
@@ -22,7 +23,7 @@ class HF(object):
         self.__thresDiffEnergy = 1.0e-6
     
     # Perform SCF calculation
-    #   guessType: 'core' or 'sad', case insensitive
+    #   guess: 'core', 'sad', or occOrbList
     def RunSCF(self, guess='sad'):
         if type(guess) is str:
             guessDict = {'core': self.__GuessCore, 'sad': self.__GuessSAD}
@@ -30,23 +31,25 @@ class HF(object):
         elif type(guess) is list:
             occOrbList = guess
         densList = self.__OccOrbToDens(occOrbList)
-        lciis = LCIIS(self.__overlap, self.__toOr)
+        lciis = LCIIS(self.__overlap, self.__toOr, self.__verbose)
         energy = 0.0
-        for numIter in xrange(self.__maxSCFIter):
-            #~ print 'scf:', numIter
+        for numIter in range(1, self.__maxSCFIter):
+            if self.__verbose:
+                print('scf iter {}; energy: {}'.format(numIter, energy))
             oldEnergy = energy
             fockList = self._OccOrbToFock(occOrbList)
-            energy = self._SCFEnergy(fockList, densList)
+            energy = self._SCFEnergy(fockList, densList) + self.__nucRepEnergy
             lciis.Enqueue(fockList, densList)
             fockList = lciis.NewFock()
             oldDensList = [dens.copy() for dens in densList]
             occOrbList = self.__FockToOccOrb(fockList)
             densList = self.__OccOrbToDens(occOrbList)
-            if self.__HasConverged(densList, oldDensList, energy, oldEnergy):
+            if self.__Converged(densList, oldDensList, energy, oldEnergy):
                 break
         # end for
-        #~ print 'done scf', numIter
-        return (energy + self.__nucRepEnergy, occOrbList, fockList)
+        if self.__verbose:
+            print('scf done; energy: {}'.format(energy))
+        return (energy, occOrbList, fockList)
     
     # Solve a Fock matrix by transforming to a orthogonalized basis then eigh
     def SolveFock(self, fock):
@@ -81,24 +84,23 @@ class HF(object):
             raise Exception('numElecTotal and multiplicity do not agree')
         return [int(numElecA), int(numElecTotal - numElecA)]
     
-    # Find a transform from atomic orbital to orthogonal orbital
+    # Find a transform from atomic orbitals to orthogonal orbitals
     def __ToOrtho(self, overlap):
         (eigVal, eigVec) = np.linalg.eigh(overlap)
-        keep = eigVal >= 1.0e-6
-        return eigVec[:, keep].dot(np.diag(1.0 / np.sqrt(eigVal[keep])))
+        keep = eigVal > 1.0e-6
+        return eigVec[:, keep] / np.sqrt(eigVal[keep])[None, :]
     
     # These guess functions return a tuple (occOrbList, densList)
     def __GuessCore(self):
         return self.__FockToOccOrb([self.__coreH] * len(set(self.__numElecAB)))
     
     def __GuessSAD(self):
-        def DensToOccOrb(dens):
-            (eigVal, eigVec) = np.linalg.eigh(dens)
-            eps = np.finfo(float).eps
-            return eigVec[:, eigVal > eps] * np.sqrt(eigVal[eigVal > eps])
         self.pypsi.SCF_SetGuessType('sad')
         sadGuessDens = self.pypsi.SCF_GuessDensity()
-        return [DensToOccOrb(sadGuessDens)] * len(set(self.__numElecAB))
+        (eigVal, eigVec) = np.linalg.eigh(sadGuessDens)
+        keep = eigVal > np.finfo(float).eps
+        fakeOccOrb = eigVec[:, keep] * np.sqrt(eigVal[keep])[None, :]
+        return [fakeOccOrb] * len(set(self.__numElecAB))
     
     # Solve Fock matrix to get (occOrbList, densList)
     def __FockToOccOrb(self, fockList):
@@ -110,26 +112,24 @@ class HF(object):
         return [occOrb.dot(occOrb.T) for occOrb in occOrbList]
     
     # Test scf convergence
-    def __HasConverged(self, densList, oldDensList, energy, oldEnergy):
-        diffDens = np.concatenate(
-            [dens - oldDens for (dens, oldDens) in zip(densList, oldDensList)])
-        diffEnergy = energy - oldEnergy
+    def __Converged(self, densList, oldDensList, energy, oldEnergy):
+        zipList = zip(densList, oldDensList)
+        diffDens = np.concatenate([dens - old for (dens, old) in zipList])
+        diffEnergy = np.abs(energy - oldEnergy)
         rmsDiffDens = np.sqrt(np.mean(diffDens**2))
         maxDiffDens = np.max(np.abs(diffDens))
-        #~ print (rmsDiffDens, maxDiffDens, diffEnergy)
+        if self.__verbose:
+            form = '  {:s}: {:.3e}'.format
+            print (form('rmsDiffDens', rmsDiffDens) +
+                   form('thres', self.__thresRmsDiffDens))
+            print (form('maxDiffDens', maxDiffDens) +
+                   form('thres', self.__thresMaxDiffDens))
+            print (form('diffEnergy ', diffEnergy) +
+                   form('thres', self.__thresDiffEnergy))
         return (rmsDiffDens < self.__thresRmsDiffDens and
                 maxDiffDens < self.__thresMaxDiffDens and
                 diffEnergy < self.__thresDiffEnergy)
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+
 

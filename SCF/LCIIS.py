@@ -2,7 +2,8 @@ import numpy as np
 
 class LCIIS(object):
     
-    def __init__(self, overlap, toOr, maxNumFock=60):
+    def __init__(self, overlap, toOr, verbose=False, maxNumFock=60):
+        self.__verbose = verbose
         from collections import deque
         self.__fList = deque(maxlen=maxNumFock)
         self.__trFList = deque(maxlen=maxNumFock)
@@ -42,7 +43,7 @@ class LCIIS(object):
         shapeTensor = (numFock, numFock, numFock, numFock)
         tensor = self.__bigMat[:numFock**2, :numFock**2].reshape(shapeTensor)
         coeff = np.zeros(numFock)
-        for numUse in xrange(len(tensor), 0, -1):
+        for numUse in range(len(tensor), 0, -1):
             tensorUse = tensor[-numUse:, -numUse:, -numUse:, -numUse:]
             (success, iniCoeffUse) = self.__InitialCoeffVec(tensorUse)
             if not success:
@@ -56,14 +57,16 @@ class LCIIS(object):
                 coeff[-len(coeffUse):] = coeffUse
                 break
         # end for
-        #~ print(coeff)
+        if self.__verbose:
+            print('  lciis coeff:')
+            print('  ' + str(coeff).replace('\n', '\n  '))
         shape = self.__fList[0][0].shape
         return [coeff.dot([f[i].ravel() for f in self.__fList]).reshape(shape)
-                for i in xrange(len(self.__fList[0]))]
+                for i in range(len(self.__fList[0]))]
     
     def __PreUpdateFull(self):
         maxNumFock = self.__fList.maxlen
-        for ind in xrange(1, maxNumFock):
+        for ind in range(1, maxNumFock):
             sourceFrom = ind * maxNumFock + 1
             sourceTo = (ind + 1) * maxNumFock
             shiftBy = -(maxNumFock + 1)
@@ -75,7 +78,7 @@ class LCIIS(object):
     
     def __PreUpdateNotFull(self):
         numFock = len(self.__fList) + 1
-        for ind in xrange(numFock - 1, 1, -1):
+        for ind in range(numFock - 1, 1, -1):
             sourceFrom = (ind - 1) * (numFock - 1)
             sourceTo = ind * (numFock - 1)
             shiftBy = ind - 1
@@ -90,12 +93,12 @@ class LCIIS(object):
         # update self.__comm
         update1 = range(numFock - 1, numFock**2 - 1, numFock)
         update2 = range(numFock**2 - numFock, numFock**2)
-        for indComm in update1:
-            self.__comm[indComm] = self.__Comm((indComm + 1) / numFock - 1, -1)
-        for indComm in update2:
-            self.__comm[indComm] = self.__Comm(-1, indComm - update2[0])
+        for iComm in update1:
+            self.__comm[iComm] = self.__Comm(int((iComm + 1) / numFock - 1), -1)
+        for iComm in update2:
+            self.__comm[iComm] = self.__Comm(-1, iComm - update2[0])
         # update self.__bigMat
-        update = update1 + update2
+        update = list(update1) + list(update2)
         full = slice(0, numFock**2)
         commFull = np.array(self.__comm[full])
         self.__bigMat[update, full] = commFull[update, :].dot(commFull.T)
@@ -114,8 +117,8 @@ class LCIIS(object):
         numUse = len(tensorUse)
         ones = np.ones((numUse, 1))
         hess = np.zeros((numUse, numUse))
-        for ind in xrange(numUse):
-            # hess[i, i] = tensorUse[i, i, j, j]
+        # hess[i, i] = tensorUse[i, i, j, j]
+        for ind in range(numUse):
             hess[ind, :] = np.diag(tensorUse[ind, ind, :, :])
         hessLag = np.bmat([[hess,   ones   ],
                            [ones.T, [[0.0]]]])
@@ -132,7 +135,7 @@ class LCIIS(object):
         tensorHess += tensorUse.transpose(0, 3, 1, 2)
         tensorHess += tensorUse.transpose(1, 3, 0, 2)
         lagMult = 0.0
-        for _ in xrange(self.__maxIterNewton):
+        for _ in range(self.__maxIterNewton):
             (grad, hess) = self.__GradHess(tensorGrad, tensorHess, coeffUse)
             gradLag = np.concatenate((grad + lagMult, [0.0]))
             hessLag = np.bmat([[hess,       onesVec],

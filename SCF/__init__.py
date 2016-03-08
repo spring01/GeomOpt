@@ -1,2 +1,2 @@
-from HF import HF
-from KS import KS
+from .HF import HF
+from .KS import KS
