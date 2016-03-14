@@ -58,6 +58,11 @@ class HF(object):
         argsort = np.argsort(orbEigVal)
         return (orbEigVal[argsort], self.__toOr.dot(orOrb[:, argsort]))
     
+    # Convert a density matrix to a (fake) occupied orbital matrix (not a list)
+    def DensToFakeOccOrb(self, dens):
+        (eigVal, eigVec) = np.linalg.eigh(dens)
+        keep = eigVal > np.finfo(float).eps
+        return eigVec[:, keep] * np.sqrt(eigVal[keep])[None, :]
     
     # These protected functions are overloaded in class KS
     # Construct a Fock matrix from occOrbList
@@ -96,11 +101,8 @@ class HF(object):
     
     def __GuessSAD(self):
         self.pypsi.SCF_SetGuessType('sad')
-        sadGuessDens = self.pypsi.SCF_GuessDensity()
-        (eigVal, eigVec) = np.linalg.eigh(sadGuessDens)
-        keep = eigVal > np.finfo(float).eps
-        fakeOccOrb = eigVec[:, keep] * np.sqrt(eigVal[keep])[None, :]
-        return [fakeOccOrb] * len(set(self.__numElecAB))
+        sadDens = self.pypsi.SCF_GuessDensity()
+        return [self.DensToFakeOccOrb(sadDens)] * len(set(self.__numElecAB))
     
     # Solve Fock matrix to get (occOrbList, densList)
     def __FockToOccOrb(self, fockList):

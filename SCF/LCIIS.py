@@ -45,9 +45,9 @@ class LCIIS(object):
         coeff = np.zeros(numFock)
         for numUse in range(len(tensor), 0, -1):
             tensorUse = tensor[-numUse:, -numUse:, -numUse:, -numUse:]
-            (success, iniCoeffUse) = self.__InitialCoeffVec(tensorUse)
+            (success, iniCoeffUse) = self.__InitialCoeffUse(tensorUse)
             if not success:
-                print('__InitialCoeffVec failed; reducing tensor size')
+                print('__InitialCoeffUse failed; reducing tensor size')
                 continue
             (success, coeffUse) = self.__NewtonSolver(tensorUse, iniCoeffUse)
             if not success:
@@ -61,8 +61,9 @@ class LCIIS(object):
             print('  lciis coeff:')
             print('  ' + str(coeff).replace('\n', '\n  '))
         shape = self.__fList[0][0].shape
-        return [coeff.dot([f[i].ravel() for f in self.__fList]).reshape(shape)
-                for i in range(len(self.__fList[0]))]
+        return [coeff.dot([fList[spin].ravel()
+                           for fList in self.__fList]).reshape(shape)
+                for spin in range(len(self.__fList[0]))]
     
     def __PreUpdateFull(self):
         maxNumFock = self.__fList.maxlen
@@ -93,10 +94,10 @@ class LCIIS(object):
         # update self.__comm
         update1 = range(numFock - 1, numFock**2 - 1, numFock)
         update2 = range(numFock**2 - numFock, numFock**2)
-        for iComm in update1:
-            self.__comm[iComm] = self.__Comm(int((iComm + 1) / numFock - 1), -1)
-        for iComm in update2:
-            self.__comm[iComm] = self.__Comm(-1, iComm - update2[0])
+        for indComm in update1:
+            self.__comm[indComm] = self.__Comm((indComm + 1) // numFock - 1, -1)
+        for indComm in update2:
+            self.__comm[indComm] = self.__Comm(-1, indComm - update2[0])
         # update self.__bigMat
         update = list(update1) + list(update2)
         full = slice(0, numFock**2)
@@ -113,7 +114,7 @@ class LCIIS(object):
         return np.concatenate([Comm(trF, trD) for (trF, trD) in zipList])
     
     # return (success, cdiis_coefficients)
-    def __InitialCoeffVec(self, tensorUse):
+    def __InitialCoeffUse(self, tensorUse):
         numUse = len(tensorUse)
         ones = np.ones((numUse, 1))
         hess = np.zeros((numUse, numUse))
@@ -128,18 +129,18 @@ class LCIIS(object):
     
     # return (success, lciis_coefficients)
     def __NewtonSolver(self, tensorUse, coeffUse):
-        onesVec = np.ones((len(coeffUse), 1))
         tensorGrad = tensorUse + tensorUse.transpose(1, 0, 2, 3)
         tensorHess = tensorGrad + tensorUse.transpose(0, 2, 1, 3)
         tensorHess += tensorUse.transpose(3, 0, 1, 2)
         tensorHess += tensorUse.transpose(0, 3, 1, 2)
         tensorHess += tensorUse.transpose(1, 3, 0, 2)
+        ones = np.ones((len(coeffUse), 1))
         lagMult = 0.0
         for _ in range(self.__maxIterNewton):
             (grad, hess) = self.__GradHess(tensorGrad, tensorHess, coeffUse)
             gradLag = np.concatenate((grad + lagMult, [0.0]))
-            hessLag = np.bmat([[hess,       onesVec],
-                               [onesVec.T,  [[0.0]]  ]])
+            hessLag = np.bmat([[hess,      ones],
+                               [ones.T, [[0.0]]]])
             step = np.linalg.solve(hessLag, gradLag)
             if np.isnan(sum(step)):
                 print('Inversion failed')

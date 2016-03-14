@@ -27,13 +27,13 @@ info = {'basis': '6-31g',
         'charge': 0,
         '2s+1': 1}
 
-#~ np.set_printoptions(formatter={'float': '{: 0.5f}'.format})
+np.set_printoptions(formatter={'float': '{: 0.5f}'.format})
 
-#~ hf = SCF.HF(xyz, info)
-#~ (energy, occOrbList, fockList) = hf.RunSCF()
-#~ hf.pypsi.JK_Initialize('directjk', 'cc-pvdz-jkfit')
-#~ print 'energy:', energy
-#~ print hf.SolveFock(fockList[0])[0]
+hf = SCF.HF(xyz, info)
+(energy, occOrbList, fockList) = hf.RunSCF()
+hf.pypsi.JK_Initialize('directjk', 'cc-pvdz-jkfit')
+print('energy:', energy)
+print(hf.SolveFock(fockList[0])[0])
 
 
 info['dft'] = 'b3lyp'
@@ -45,7 +45,7 @@ ks.pypsi.JK_Initialize('dfjk', 'cc-pvdz-jkfit')
 print('energy:', energy)
 print(ks.SolveFock(fockList[0])[0])
 
-#~ (energy, occOrbList, fockList) = ks.RunSCF(occOrbList)
-#~ print 'energy:', energy
-#~ print ks.SolveFock(fockList[0])[0]
+(energy, occOrbList, fockList) = ks.RunSCF(occOrbList)
+print('energy:', energy)
+print(ks.SolveFock(fockList[0])[0])
 

@@ -5,7 +5,7 @@ from GeomOpt import GeomOpt
 def EnergyFunc(xyz, guess, info):
     hf = SCF.HF(xyz, info)
     hf.pypsi.Settings_SetMaxNumCPUCores(4)
-    #~ hf.pypsi.JK_Initialize('dfjk', 'cc-pvdz-jkfit')
+    hf.pypsi.JK_Initialize('dfjk', 'cc-pvdz-jkfit')
     return hf.RunSCF(guess)[0:2]
 
 np.set_printoptions(formatter={'float': '{: 0.5f}'.format})
