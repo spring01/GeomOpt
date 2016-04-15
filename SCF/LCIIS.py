@@ -17,12 +17,13 @@ class LCIIS(object):
         self.__maxIterNewton = 200
         self.__gradNormThres = 1e-12
     
-    # Enqueue Fock list and density list
+    # Enqueue Fock list and density list, then extrapolate Fock
     # Note: this Fock list should be built from this density list
     #   fockList: [fock] for rhf/rks; [fockA, fockB] for uhf/uks
     #   densList: [dens] for rhf/rks; [densA, densB] for uhf/uks
-    #   fock and dens are np.array with basically no shape requirement
-    def Enqueue(self, fockList, densList):
+    #   return: [newFock] for rhf/rks; [newFockA, newFockB] for uhf/uks
+    def NewFock(self, fockList, densList):
+        # enqueue fock & density and update commutators & tensor
         if len(self.__fList) == self.__fList.maxlen:
             self.__PreUpdateFull()
         else:
@@ -34,10 +35,7 @@ class LCIIS(object):
         self.__trFList.append(trFList)
         self.__trDList.append(trDList)
         self.__UpdateCommBigMat()
-    
-    # Extrapolate Fock
-    #   return: [newFock] for rhf/rks; [newFockA, newFockB] for uhf/uks
-    def NewFock(self):
+        
         # coeff always has length numFock with 0.0 filled at the front in need
         numFock = len(self.__fList)
         shapeTensor = (numFock, numFock, numFock, numFock)
