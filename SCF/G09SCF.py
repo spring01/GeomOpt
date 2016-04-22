@@ -71,7 +71,7 @@ class G09SCF(object):
     #   guess: 'core', 'sad', or occOrbList
     def RunSCF(self, guess='harris'):
         if type(guess) is str:
-            guessDict = {'core': self.__GuessCore, 'harris': self.__GuessHarris}
+            guessDict = {'harris': self.__GuessHarris}
             occOrbList = guessDict[guess.lower()]()
         elif type(guess) is list:
             occOrbList = guess
