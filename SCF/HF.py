@@ -34,14 +34,14 @@ class HF(object):
         lciis = LCIIS(self.__overlap, self.__toOr, self.__verbose)
         energy = 0.0
         for numIter in range(1, self.__maxSCFIter):
-            if self.__verbose:
-                print('scf iter {}; energy: {}'.format(numIter, energy))
             oldEnergy = energy
             (fockList, energy) = self._FockEnergy(occOrbList, densList)
             fockList = lciis.NewFock(fockList, densList)
             oldDensList = [dens.copy() for dens in densList]
             occOrbList = self.__FockToOccOrb(fockList)
             densList = self.__OccOrbToDens(occOrbList)
+            if self.__verbose:
+                print('scf iter {}; energy: {}'.format(numIter, energy))
             if self.__Converged(densList, oldDensList, energy, oldEnergy):
                 break
         # end for

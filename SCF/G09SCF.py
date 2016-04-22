@@ -48,7 +48,7 @@ class G09SCF(object):
         method = info['dft'] if 'dft' in info else 'hf'
         gjf = ['%nprocshared={:d}'.format(numCPUCore)]
         gjf += ['%mem={:s}'.format(memory)]
-        gjf += ['#p ' + method + ' ' + info['basis'] + ' ' +
+        gjf += ['# ' + method + ' ' + info['basis'] + ' ' +
                 'iop(5/13=1, 5/18=-2) scf(maxcycle=1, vshift=-1) ' +
                 keyword]
         gjf += ['', 'dummy title', '']
@@ -61,6 +61,11 @@ class G09SCF(object):
             fGjf.write(gjf)
         os.system('g09binfile=' + self.__workDat + ' '
                   'g09 ' + self.__workGjf + ' ' + self.__workLog)
+        with open(self.__workLog, 'r') as fLog:
+            for lastLine in fLog:
+                pass
+        if 'Normal termination' not in lastLine:
+            raise Exception('g09 failed')
     
     # Perform SCF calculation
     #   guess: 'core', 'sad', or occOrbList
@@ -123,9 +128,9 @@ class G09SCF(object):
         keep = eigVal > 1.0e-6
         return eigVec[:, keep] / np.sqrt(eigVal[keep])[None, :]
     
-    # These guess functions return occOrbList
-    def __GuessCore(self):
-        return self.__FockToOccOrb([self.__coreH] * len(set(self.__numElecAB)))
+    #~ # These guess functions return occOrbList
+    #~ def __GuessCore(self):
+        #~ return self.__FockToOccOrb([self.__coreH] * len(set(self.__numElecAB)))
     
     def __GuessHarris(self):
         return [self.__harrisMO[:, :ne] for ne in self.__numElecAB]
